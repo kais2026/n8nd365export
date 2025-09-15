@@ -1,97 +1,83 @@
 {
-  "name": "Export Dynamics 365 to Excel",
   "nodes": [
     {
       "parameters": {
         "triggerTimes": [
           {
-            "hour": 18,
-            "minutes": 0
+            "mode": "everyDay",
+            "hour": 18
           }
         ]
       },
-      "name": "Cron",
+      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.cron",
       "typeVersion": 1,
-      "position": [
-        250,
-        300
-      ]
+      "position": [200, 300]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://yourorg.crm.dynamics.com/api/data/v9.1/accounts",
-        "authentication": "oAuth2"
+        "operation": "executeQuery",
+        "query": "SELECT article, reference, emplacement, qte_dispo, qte_reservee, (qte_dispo - qte_reservee) as qte_libre FROM stock"
       },
-      "name": "HTTP Request (D365)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 2,
-      "position": [
-        500,
-        300
-      ],
-      "credentials": {
-        "oAuth2Api": "Dynamics365 OAuth2"
-      }
+      "name": "Get Stock Data",
+      "type": "n8n-nodes-base.mysql",
+      "typeVersion": 1,
+      "position": [500, 300]
     },
     {
       "parameters": {
-        "operation": "fromJson",
-        "options": {
-          "fileFormat": "xlsx"
-        }
+        "operation": "write",
+        "options": {},
+        "binaryData": false,
+        "fileName": "Stock_{{$now.format('YYYY-MM-DD_HH-mm')}}.xlsx"
       },
-      "name": "Spreadsheet File",
+      "name": "Create Excel File",
       "type": "n8n-nodes-base.spreadsheetFile",
       "typeVersion": 1,
-      "position": [
-        750,
-        300
-      ]
+      "position": [800, 300]
     },
     {
       "parameters": {
-        "fileName": "Export_D365_{{$now.format(\"YYYYMMDD\")}}.xlsx",
-        "dataPropertyName": "data"
+        "fromEmail": "quais.selmi@gmail.com",
+        "toEmail": "quais.selmi@gmail.com",
+        "subject": "Stock disponible du {{$now.format('DD/MM/YYYY')}}",
+        "text": "Veuillez trouver en pièce jointe le stock disponible à 18h.",
+        "attachments": "={{$binary.data}}"
       },
-      "name": "Write File",
-      "type": "n8n-nodes-base.writeBinaryFile",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
       "typeVersion": 1,
-      "position": [
-        1000,
-        300
-      ]
+      "position": [1100, 300]
     }
   ],
   "connections": {
-    "Cron": {
+    "Schedule Trigger": {
       "main": [
         [
           {
-            "node": "HTTP Request (D365)",
+            "node": "Get Stock Data",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "HTTP Request (D365)": {
+    "Get Stock Data": {
       "main": [
         [
           {
-            "node": "Spreadsheet File",
+            "node": "Create Excel File",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Spreadsheet File": {
+    "Create Excel File": {
       "main": [
         [
           {
-            "node": "Write File",
+            "node": "Send Email",
             "type": "main",
             "index": 0
           }
